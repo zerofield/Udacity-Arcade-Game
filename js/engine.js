@@ -53,6 +53,7 @@ var Engine = (function(global) {
      * 做一次就够了
      */
     function init() {
+        console.log('init');
         reset();
         lastTime = Date.now();
         main();
@@ -130,6 +131,7 @@ var Engine = (function(global) {
      */
     function reset() {
         // 空操作
+        
     }
 
     /* 紧接着我们来加载我们知道的需要来绘制我们游戏关卡的图片。然后把 init 方法设置为回调函数。
