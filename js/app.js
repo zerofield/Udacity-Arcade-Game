@@ -2,24 +2,40 @@ const STATE_IDLE = 0;
 const STATE_MOVING = 1;
 const DEBUG = true;
 
-class Rect{
-    constructor(left, top, right, bottom){
+const GRID_WIDTH = 101;
+const GRID_HEIGHT = 83;
+
+const GRID_H_COUNT = 5;
+const GRID_V_COUNT = 6;
+
+const Y_OFFSET = 23;
+
+const DIRECTION_LEFT = -1;
+const DIRECTION_RIGHT = 1;
+
+class Rect {
+    constructor(left, top, right, bottom) {
         this.left = left;
         this.top = top;
         this.right = right;
         this.bottom = bottom;
     }
 
-    width(){
+    width() {
         return this.right - this.left;
     }
 
-    height(){
+    height() {
         return this.bottom - this.top;
+    }
+
+    isIntersectedWith(other) {
+        //TODO 
+
     }
 }
 
-class GameObject{
+class GameObject {
     constructor(x = 0, y = 0, sprite, collistionBounds) {
         this.x = x;
         this.y = y;
@@ -27,38 +43,58 @@ class GameObject{
         this.collistionBounds = collistionBounds;
     }
 
-    update(dt){
+    update(dt) {
 
     }
 
-    render(){
-        if(DEBUG) {
+    render() {
+        if (DEBUG) {
             ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
-           
-            ctx.fillRect(this.x + this.collistionBounds.left, 
+
+            ctx.fillRect(this.x + this.collistionBounds.left,
                 this.y + this.collistionBounds.top,
-                this.collistionBounds.width(), 
+                this.collistionBounds.width(),
                 this.collistionBounds.height());
         }
         ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
+    }
+
+    getBoundingBox() {
+        return new Rect(this.x + this.collistionBounds.left,
+            this.y + this.collistionBounds.top,
+            this.collistionBounds.width(),
+            this.collistionBounds.height());
     }
 }
 
 
 class Enemy extends GameObject {
 
-    constructor(x, y, xSpeed){
+    constructor(x, y, xSpeed, direction) {
         super(x, y, 'images/enemy-bug.png', new Rect(0, 73, 101, 153));
         this.xSpeed = xSpeed;
+        this.direction = direction;
     }
 
-    update(dt){
+    update(dt) {
         this.x += dt * this.xSpeed;
-        console.log(window.ctx.width);
-        if (this.x + this.collistionBounds. > window.ctx.width){
-            this.x = 0;
+        const canvasElem = document.querySelector('canvas');
+        if (this.x > canvasElem.width) {
+            this.x = -this.collistionBounds.width();
         }
+    }
 
+    render() {
+        const canvasElem = document.querySelector('canvas');
+        const canvasWidth = canvasElem.width;
+        const canvasHeight = canvasElem.height;
+        //flip canvas if direction is DIRECTION_LEFT
+        ctx.save();
+        ctx.translate(canvasWidth / 2, canvasHeight / 2);
+        ctx.scale(this.direction, 1);
+        ctx.translate(-canvasWidth / 2, -canvasHeight / 2);
+        GameObject.prototype.render.call(this);
+        ctx.restore();
     }
 
 }
@@ -68,15 +104,35 @@ class Enemy extends GameObject {
 class Player extends GameObject {
 
     constructor(x, y, moveSpeed) {
-        super(x, y, 'images/char-boy.png', new Rect(0, 73, 101, 153))
+        super(x, y, 'images/char-boy.png', new Rect(17, 80, 84, 153))
         this.targetX = x;
         this.targetY = y;
         this.moveSpeed = moveSpeed;
         this.state = STATE_IDLE;
+
     }
 
     update(dt) {
 
+        if (this.targetX == this.x && this.targetY == this.y) {
+            this.state = STATE_IDLE;
+            return;
+        }
+
+        const moveAmount = this.moveSpeed * dt;
+        const dy = this.targetY - this.y;
+        const dx = this.targetX - this.x;
+
+        const distance = Math.sqrt(dy * dy + dx * dx);
+        if (distance < moveAmount) {
+            this.x = this.targetX;
+            this.y = this.targetY;
+            this.state = STATE_IDLE;
+        } else {
+            const angle = Math.atan2(dy, dx);
+            this.x += Math.cos(angle) * moveAmount;
+            this.y += Math.sin(angle) * moveAmount;
+        }
     }
 
     handleInput(key) {
@@ -85,23 +141,32 @@ class Player extends GameObject {
         }
 
         console.log(`key = ${key}`);
-        
+        const canvasElem = document.querySelector('canvas');
+        const canvasWidth = canvasElem.width;
+        const canvasHeight = canvasElem.height;
+
         if (key === 'left') {
-
-        } else if(key === 'right') {
-
-        } else if(key === 'up') {
-
-        } else if(key ==='down') {
-
+            if (this.x > 0) {
+                this.targetX = this.x - GRID_WIDTH;
+                this.state = STATE_MOVING;
+            }
+        } else if (key === 'right') {
+            if (this.x < 4 * GRID_WIDTH) {
+                this.targetX = this.x + GRID_WIDTH;
+                this.state = STATE_MOVING;
+            }
+        } else if (key === 'up') {
+            if (this.y > 0) {
+                this.targetY = this.y - GRID_HEIGHT;
+                this.state = STATE_MOVING;
+            }
+        } else if (key === 'down') {
+            if (this.x < 4 * GRID_HEIGHT) {
+                this.targetY = this.y + GRID_HEIGHT;
+                this.state = STATE_MOVING;
+            }
         }
     }
-
-    setTarget(targetX, targetY){
-        this.targetX = targetX;
-        this.targetY = targetY;
-    }
-
 }
 
 
@@ -111,12 +176,22 @@ class Player extends GameObject {
 
 var allEnemies = [];
 for (let i = 0; i < 3; ++i) {
-    const enemy = new Enemy(0, 83 * (i + 1) - 23, 3);
+    //random speed
+    const enemySpeed = 100 + (Math.random() - 0.5) * 100;
+    //random direction
+    const direction = Math.random() < 0.5 ? DIRECTION_LEFT : DIRECTION_RIGHT;
+    const enemy = new Enemy(0 + Math.random() * 505,
+        GRID_HEIGHT * (i + 1) - Y_OFFSET,
+        enemySpeed,
+        direction);
     allEnemies.push(enemy);
 }
 
 
-var player = new Player(101 * 2, 83 * 5 - 23);
+const playerX = GRID_WIDTH * Math.floor(GRID_H_COUNT / 2);
+const playerY = GRID_HEIGHT * (GRID_V_COUNT - 1) - Y_OFFSET;
+const playerSpeed = 300;
+var player = new Player(playerX, playerY, playerSpeed);
 
 
 
