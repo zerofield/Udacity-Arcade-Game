@@ -1,5 +1,6 @@
 const STATE_IDLE = 0;
 const STATE_MOVING = 1;
+
 const DEBUG = true;
 
 const GRID_WIDTH = 101;
@@ -72,29 +73,46 @@ class Enemy extends GameObject {
 
     constructor(x, y, xSpeed, direction) {
         super(x, y, 'images/enemy-bug.png', new Rect(0, 73, 101, 153));
-        this.xSpeed = xSpeed;
         this.direction = direction;
+        this.xSpeed = xSpeed * (this.direction == DIRECTION_LEFT ? -1 : 1);
     }
 
     update(dt) {
+        console.log(this.xSpeed);
         this.x += dt * this.xSpeed;
         const canvasElem = document.querySelector('canvas');
+
         if (this.x > canvasElem.width) {
             this.x = -this.collistionBounds.width();
+        } else if (this.x + this.collistionBounds.width() < 0) {
+            this.x = canvasElem.width;
         }
     }
 
     render() {
-        const canvasElem = document.querySelector('canvas');
-        const canvasWidth = canvasElem.width;
-        const canvasHeight = canvasElem.height;
-        //flip canvas if direction is DIRECTION_LEFT
-        ctx.save();
-        ctx.translate(canvasWidth / 2, canvasHeight / 2);
-        ctx.scale(this.direction, 1);
-        ctx.translate(-canvasWidth / 2, -canvasHeight / 2);
-        GameObject.prototype.render.call(this);
-        ctx.restore();
+
+        if (this.direction == DIRECTION_LEFT) {
+            // DRAW FLIPPED sprite
+            const canvasElem = document.querySelector('canvas');
+            const canvasWidth = canvasElem.width;
+            const canvasHeight = canvasElem.height;
+         
+            ctx.save();
+            ctx.scale(this.direction, 1);
+            ctx.translate(-(this.x + 101), 0);
+
+            if (DEBUG) {
+                ctx.fillStyle = "rgba(255, 0, 0, 0.5)";
+                ctx.fillRect(this.collistionBounds.left,
+                    this.y + this.collistionBounds.top,
+                    this.collistionBounds.width(),
+                    this.collistionBounds.height());
+            }
+            ctx.drawImage(Resources.get(this.sprite), 0, this.y);
+            ctx.restore();
+        } else {
+            GameObject.prototype.render.call(this);
+        }
     }
 
 }
@@ -133,6 +151,9 @@ class Player extends GameObject {
             this.x += Math.cos(angle) * moveAmount;
             this.y += Math.sin(angle) * moveAmount;
         }
+
+
+
     }
 
     handleInput(key) {
@@ -161,7 +182,7 @@ class Player extends GameObject {
                 this.state = STATE_MOVING;
             }
         } else if (key === 'down') {
-            if (this.x < 4 * GRID_HEIGHT) {
+            if (this.y < 4 * GRID_HEIGHT) {
                 this.targetY = this.y + GRID_HEIGHT;
                 this.state = STATE_MOVING;
             }
@@ -177,9 +198,10 @@ class Player extends GameObject {
 var allEnemies = [];
 for (let i = 0; i < 3; ++i) {
     //random speed
-    const enemySpeed = 100 + (Math.random() - 0.5) * 100;
+    const enemySpeed = 300 + (Math.random() - 0.5) * 100;
     //random direction
     const direction = Math.random() < 0.5 ? DIRECTION_LEFT : DIRECTION_RIGHT;
+
     const enemy = new Enemy(0 + Math.random() * 505,
         GRID_HEIGHT * (i + 1) - Y_OFFSET,
         enemySpeed,
@@ -194,6 +216,10 @@ const playerSpeed = 300;
 var player = new Player(playerX, playerY, playerSpeed);
 
 
+function resetPlayer (){
+    player.x = playerX;
+    player.y = playerY;
+}
 
 // 这段代码监听游戏玩家的键盘点击事件并且代表将按键的关键数字送到 Play.handleInput()
 // 方法里面。你不需要再更改这段代码了。
