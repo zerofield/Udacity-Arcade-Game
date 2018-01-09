@@ -1,7 +1,7 @@
 const STATE_IDLE = 0;
 const STATE_MOVING = 1;
 
-const DEBUG = true;
+const DEBUG = false;
 
 const GRID_WIDTH = 101;
 const GRID_HEIGHT = 83;
@@ -31,8 +31,10 @@ class Rect {
     }
 
     isIntersectedWith(other) {
-        //TODO 
-
+        return this.left < other.right &&
+            other.left < this.right &&
+            this.top < other.bottom &&
+            other.top < this.bottom;
     }
 }
 
@@ -63,8 +65,8 @@ class GameObject {
     getBoundingBox() {
         return new Rect(this.x + this.collistionBounds.left,
             this.y + this.collistionBounds.top,
-            this.collistionBounds.width(),
-            this.collistionBounds.height());
+            this.x + this.collistionBounds.right,
+            this.y + this.collistionBounds.bottom);
     }
 }
 
@@ -78,7 +80,6 @@ class Enemy extends GameObject {
     }
 
     update(dt) {
-        console.log(this.xSpeed);
         this.x += dt * this.xSpeed;
         const canvasElem = document.querySelector('canvas');
 
@@ -96,7 +97,7 @@ class Enemy extends GameObject {
             const canvasElem = document.querySelector('canvas');
             const canvasWidth = canvasElem.width;
             const canvasHeight = canvasElem.height;
-         
+
             ctx.save();
             ctx.scale(this.direction, 1);
             ctx.translate(-(this.x + 101), 0);
@@ -134,6 +135,11 @@ class Player extends GameObject {
 
         if (this.targetX == this.x && this.targetY == this.y) {
             this.state = STATE_IDLE;
+
+            if (this.y <= 0) {
+                hitGoal();
+            }
+
             return;
         }
 
@@ -151,9 +157,6 @@ class Player extends GameObject {
             this.x += Math.cos(angle) * moveAmount;
             this.y += Math.sin(angle) * moveAmount;
         }
-
-
-
     }
 
     handleInput(key) {
@@ -213,12 +216,19 @@ for (let i = 0; i < 3; ++i) {
 const playerX = GRID_WIDTH * Math.floor(GRID_H_COUNT / 2);
 const playerY = GRID_HEIGHT * (GRID_V_COUNT - 1) - Y_OFFSET;
 const playerSpeed = 300;
-var player = new Player(playerX, playerY, playerSpeed);
+const player = new Player(playerX, playerY, playerSpeed);
 
 
-function resetPlayer (){
+function hitGoal() {
+    resetPlayer();
+}
+
+
+function resetPlayer() {
     player.x = playerX;
     player.y = playerY;
+    player.targetX = playerX;
+    player.targetY = playerY;
 }
 
 // 这段代码监听游戏玩家的键盘点击事件并且代表将按键的关键数字送到 Play.handleInput()

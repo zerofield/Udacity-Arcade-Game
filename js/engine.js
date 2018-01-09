@@ -81,12 +81,13 @@ var Engine = (function(global) {
     }
 
     function checkCollisions() {
+        //如果玩家碰到了敌人，就重置
         const playerBoundingBox = player.getBoundingBox();
-
         for(const enemy of allEnemies) {
             const enemyBoundingBox = enemy.getBoundingBox();
             if(playerBoundingBox.isIntersectedWith(enemyBoundingBox)) {
-                resetPlayer();
+                console.log('collided!');
+                reset();
             }
         }
     }
@@ -142,7 +143,8 @@ var Engine = (function(global) {
      */
     function reset() {
         // 空操作
-        
+        resetPlayer();
+
     }
 
     /* 紧接着我们来加载我们知道的需要来绘制我们游戏关卡的图片。然后把 init 方法设置为回调函数。
